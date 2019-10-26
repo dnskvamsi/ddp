@@ -1,0 +1,133 @@
+---
+title: "Analysis of the mtcars Dataset"
+output:
+  slidy_presentation: default
+  html_document:
+    number_sections: yes
+    toc: yes
+  ioslides_presentation: default
+mode: selfcontained
+job: Reproducible Pitch Presentation
+subtitle: Prediction of 'cyl' variable in mtcars dataset
+highlighter: highlight.js
+widgets: bootstrap
+---
+
+## Coursera Reproducible Pitch
+
+### See the Regression Models Course Project  
+
+- URL: *https://github.com/dnskvamsi/Developing-Data-Products-Week-4-Course-Project*
+- Find here all the data that have been use for this presentation and also for the first part of the data Science Project: "First, you will create a Shiny application and deploy it on Rstudio's servers.Second, you will use Slidify or Rstudio Presenter to prepare a reproducible pitch presentation about your application."
+
+### Find all details here
+URL: *https://www.coursera.org/learn/data-products/peer/tMYrn/course-project-shiny-application-and-reproducible-pitch*
+
+---
+
+## mtcars Dataset
+
+### Motor Trend Car Road Tests
+
+> The data was extracted from the 1974 Motor Trend US magazine, and comprises fuel consumption and 10 aspects of automobile design and performance for 32 automobiles (1973-74 models).
+### Source
+> Henderson and Velleman (1981), Building multiple regression models interactively. Biometrics, 37, 391-411.
+```{r}
+library(datasets)
+head(mtcars, 3)
+```
+---
+
+## mtcars Dataset - Format
+
+**A data frame with 32 observations on 11 variables.**
+
+| Index | Field | Detail |
+------- | ----- | ------ |
+| [, 1] | mpg | Miles/(US) gallon |
+| [, 2]  | cyl | Number of cylinders |
+| [, 3]	| disp | Displacement (cu.in.) |
+| [, 4]	| hp | Gross horsepower |
+| [, 5]	| drat | Rear axle ratio |
+| [, 6]	| wt | Weight (lb/1000) |
+| [, 7]	| qsec | 1/4 mile time |
+| [, 8]	| vs | V/S |
+| [, 9]	| am | Transmission (0 = automatic, 1 = manual) |
+| [,10]	| gear | Number of forward gears |
+| [,11]	| carb | Number of carburetors |
+
+---
+
+## Analysis - Main Code
+
+```r
+  library(shiny)
+library(caret)
+library(rattle)
+
+ui <- fluidPage(
+ titlePanel("Decision Tree Classifier for mtcars dataset"),
+ h3("This app predicts the 'cyl' variable from the mtcars dataset"),
+ sidebarLayout(
+   sidebarPanel(
+     sliderInput(inputId = "slider",min = 0,max = 1,value = 0.6,step = 0.1,label = "What % of data is training data?")
+   ),
+   mainPanel(
+     tabsetPanel(
+       tabPanel(title = "Dataset",h3("This is mtcars dataset"),tableOutput("data")),
+       tabPanel(title = "predictions",tableOutput("predictions")),
+       tabPanel(title = "Accuracy",verbatimTextOutput("accuracy")),
+       tabPanel(title = "Tree",plotOutput("tree"))
+       )
+     )
+   )
+ )
+
+
+server <- function(input, output) {
+   output$data<-renderTable({
+     mtcars
+   })
+   df<-reactive({
+     data<-mtcars
+     index<-createDataPartition(data$cyl,p=input$slider,list=FALSE)
+     training<-data[index, ]
+     testing<-data[-index, ]
+     preobj<-preProcess(training[ ,-2],method = c("center","scale"))
+     trainingnew<-predict(preobj,training[ ,-2])
+     testingnew<-predict(preobj,testing[ ,-2])
+     trainingnew$cyl<-as.factor(training$cyl)
+     testingnew$cyl<-as.factor(testing$cyl)
+     model<-train(cyl~.,data = trainingnew,method="rpart")
+     answer<-predict(model,testingnew[ ,-11])
+     data.frame(CarName = rownames(testingnew),Predictedcyl=answer,ActualCyl=testingnew$cyl)
+   })
+   
+   output$predictions<-renderTable({
+     df()
+   })
+   
+   output$accuracy<-renderPrint({
+     confusionMatrix(df()[ ,2],df()[ ,3])
+   })
+   
+   output$tree<-renderPlot({
+     data<-mtcars
+     index<-createDataPartition(data$cyl,p=input$slider,list=FALSE)
+     training<-data[index, ]
+     testing<-data[-index, ]
+     preobj<-preProcess(training[ ,-2],method = c("center","scale"))
+     trainingnew<-predict(preobj,training[ ,-2])
+     testingnew<-predict(preobj,testing[ ,-2])
+     trainingnew$cyl<-as.factor(training$cyl)
+     testingnew$cyl<-as.factor(testing$cyl)
+     model<-train(cyl~.,data = trainingnew,method="rpart")
+     fancyRpartPlot(model$finalModel)
+   })
+   }
+
+
+# Run the application 
+shinyApp(ui = ui, server = server)
+  ou
+```
